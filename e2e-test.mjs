@@ -120,7 +120,7 @@ try {
   const rowVisible = await page.evaluate(() =>
     (document.querySelector('[role=dialog]') ?? document.body).innerText.includes('主题预设'))
   check(rowVisible, 'settings → 通用 shows the 主题预设 row')
-  for (const name of ['默认', 'Nord', 'Dracula', 'Catppuccin', 'Tokyo Night', 'One Dark', 'Gruvbox', 'Solarized', 'GitHub']) {
+  for (const name of ['默认', 'Nord', 'Dracula', 'Catppuccin', 'Tokyo Night', 'One Dark', 'Gruvbox', 'Solarized', 'GitHub', 'Everforest', 'Kanagawa', 'Rosé Pine']) {
     check(await page.getByText(name, { exact: true }).first().isVisible(), `preset option "${name}" is offered`)
   }
 

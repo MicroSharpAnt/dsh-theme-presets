@@ -16,6 +16,9 @@
  *   - Gruvbox     https://github.com/morhetz/gruvbox
  *   - Solarized   https://ethanschoonover.com/solarized
  *   - GitHub      https://primer.style/foundations/color
+ *   - Everforest  https://github.com/sainnhe/everforest (medium contrast; its Light / Dark pair)
+ *   - Kanagawa    https://github.com/rebelot/kanagawa.nvim (Lotus is the light theme, Wave the dark one)
+ *   - Rosé Pine   https://github.com/rose-pine/neovim (Dawn is the light variant, Moon the dark one)
  *
  * Only rendered tokens are derived; the DSH design system stays the authority
  * for anything a preset does not name.
@@ -199,6 +202,60 @@ export const PRESETS = [
       fill: '#161b22', text: '#e6edf3', textMuted: '#8b949e', textFaint: '#6e7681',
       border: '#30363d', accent: '#58a6ff', onAccent: '#0d1117',
       danger: '#f85149', success: '#3fb950', warning: '#d29922', info: '#58a6ff',
+    },
+  },
+  {
+    id: 'everforest',
+    name: 'Everforest',
+    lightName: 'Light',
+    darkName: 'Dark',
+    light: {
+      base: '#fdf6e3', mantle: '#efebd4', surface: '#f4f0d9', surfaceAlt: '#efebd4',
+      fill: '#f4f0d9', text: '#5c6a72', textMuted: '#829181', textFaint: '#a6b0a0',
+      border: '#e6e2cc', accent: '#8da101', onAccent: '#2d353b',
+      danger: '#f85552', success: '#35a77c', warning: '#dfa000', info: '#3a94c5',
+    },
+    dark: {
+      base: '#2d353b', mantle: '#232a2e', surface: '#343f44', surfaceAlt: '#3d484d',
+      fill: '#343f44', text: '#d3c6aa', textMuted: '#9da9a0', textFaint: '#7a8478',
+      border: '#475258', accent: '#a7c080', onAccent: '#2d353b',
+      danger: '#e67e80', success: '#83c092', warning: '#dbbc7f', info: '#7fbbb3',
+    },
+  },
+  {
+    id: 'kanagawa',
+    name: 'Kanagawa',
+    lightName: 'Lotus',
+    darkName: 'Wave',
+    light: {
+      base: '#f2ecbc', mantle: '#dcd5ac', surface: '#e7dba0', surfaceAlt: '#e4d794',
+      fill: '#e7dba0', text: '#545464', textMuted: '#43436c', textFaint: '#a09cac',
+      border: '#716e61', accent: '#4d699b', onAccent: '#f2ecbc',
+      danger: '#e82424', success: '#6f894e', warning: '#e98a00', info: '#5a7785',
+    },
+    dark: {
+      base: '#1f1f28', mantle: '#181820', surface: '#2a2a37', surfaceAlt: '#363646',
+      fill: '#2a2a37', text: '#dcd7ba', textMuted: '#c8c093', textFaint: '#54546d',
+      border: '#54546d', accent: '#7e9cd8', onAccent: '#1f1f28',
+      danger: '#e82424', success: '#98bb6c', warning: '#ff9e3b', info: '#658594',
+    },
+  },
+  {
+    id: 'rosepine',
+    name: 'Rosé Pine',
+    lightName: 'Dawn',
+    darkName: 'Moon',
+    light: {
+      base: '#faf4ed', mantle: '#f4ede8', surface: '#fffaf3', surfaceAlt: '#f2e9e1',
+      fill: '#f4ede8', text: '#464261', textMuted: '#797593', textFaint: '#9893a5',
+      border: '#dfdad9', accent: '#907aa9', onAccent: '#faf4ed',
+      danger: '#b4637a', success: '#6d8f89', warning: '#ea9d34', info: '#56949f',
+    },
+    dark: {
+      base: '#232136', mantle: '#2a283e', surface: '#2a273f', surfaceAlt: '#393552',
+      fill: '#2a283e', text: '#e0def4', textMuted: '#908caa', textFaint: '#6e6a86',
+      border: '#44415a', accent: '#c4a7e7', onAccent: '#232136',
+      danger: '#eb6f92', success: '#95b1ac', warning: '#f6c177', info: '#9ccfd8',
     },
   },
 ]

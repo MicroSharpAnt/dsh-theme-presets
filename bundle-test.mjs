@@ -75,7 +75,7 @@ const [presetIds, tokenCount] = (() => {
 })()
 
 check(idMatch !== null && idMatch[1] === 'default', 'bundle carries the default preset id')
-check(presetIds.length === 8, 'bundle carries all eight presets', presetIds.join(', '))
+check(presetIds.length === 11, 'bundle carries all eleven presets', presetIds.join(', '))
 check(tokenCount === 92, 'bundle carries the full token surface', String(tokenCount))
 check(presetIds.every(id => id.length > 0), 'every preset has a non-empty id')
 

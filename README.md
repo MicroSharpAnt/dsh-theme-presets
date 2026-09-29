@@ -38,7 +38,7 @@ https://github.com/MicroSharpAnt/dsh-theme-presets.git
 - 选择写进当前 Web profile 的 `cordis.patch.yml` 中 `theme-presets.config.preset`，
   跨刷新、跨重启保留。
 
-## 八个预设
+## 十一个预设
 
 | id | 名称 | 浅色变体 | 深色变体 |
 | --- | --- | --- | --- |
@@ -50,6 +50,9 @@ https://github.com/MicroSharpAnt/dsh-theme-presets.git
 | `gruvbox` | Gruvbox | Light | Dark |
 | `solarized` | Solarized | Light | Dark |
 | `github` | GitHub | Light | Dark |
+| `everforest` | Everforest | Light | Dark |
+| `kanagawa` | Kanagawa | Lotus | Wave |
+| `rosepine` | Rosé Pine | Dawn | Moon |
 
 配色取自各主题自己发布的调色板，不是凭印象配的近似值。每个主题的 15 个语义锚点
 （底色 / 表面 / 文字 / 边框 / 强调 / 四种状态）定义在 `presets.mjs`，其余 92 个

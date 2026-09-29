@@ -81,7 +81,7 @@
 `{preset: "default"}` 会直接抛错。Host 那边照样接受写入并落盘，客户端却丢弃这一段、
 把行回滚到上一个预设——症状就是"点『默认』闪一下就跳回原主题"，而 profile 里其实
 已经存了 `default`，两边从此不一致。根因是 `PRESET_IDS`
-（`presets.mjs`，只含 8 个配色家族）与 `DEFAULT_PRESET_ID` 是两回事，而 fallback
+（`presets.mjs`，只含 11 个配色家族）与 `DEFAULT_PRESET_ID` 是两回事，而 fallback
 作为可存储值也必须能被校验接受。现在 `createPresetSchema()` 会自行把 fallback 并进
 分支表，`schema-test.mjs` 则改成使用 Host 真实传入的 id 列表、并真的用 schemastery
 水合一次来钉住这一点——早先这组测试自己手写了一份含 `default` 的 id 列表，
@@ -102,11 +102,11 @@ node e2e-test.mjs       # 可选：真实浏览器里的端到端验证，22 项
 | `self-test.mjs` (19) | 浏览器端逻辑：接管时机（loading 期不接管）、92 token 覆盖、切换与持久化、未知 id 回退 |
 | `host-test.mjs` | 宿主端：Config 校验、实时切换和首屏注入 |
 | `bundle-test.mjs` (11) | 执行**真实产物** `lib/client.js`：注册形状、只 require `react`、导出面、内联数据完整 |
-| `e2e-test.mjs` (22) | 真实浏览器（playwright + 本机 Chrome）：设置行出现、9 个选项、切换后浏览器端接管、持久化、重载后首屏层先绘制、两层取值一致、无 console 报错 |
+| `e2e-test.mjs` (22) | 真实浏览器（playwright + 本机 Chrome）：设置行出现、12 个选项、切换后浏览器端接管、持久化、重载后首屏层先绘制、两层取值一致、无 console 报错 |
 
 前五个套件都在进程外跑，只有 `e2e-test.mjs` 会连真实 GUI —— 因此它**不在
-`npm test` 里**：需要**运行中的 `dsh web`**（token 从
-`<checkout>/.dsh-build/recovered-service.log` 读）、本机 Google Chrome，以及
+`npm test` 里**：需要**运行中的 `dsh web`**（token 从 `<checkout>/.dsh-build` 下
+最新的 service log 读——`dsh web` 每次启动都会轮换它）、本机 Google Chrome，以及
 dsh 检出里的 playwright。它在结束时会**恢复进入时的那个预设**，所以不会改掉你的选择。
 dsh 检出不在默认位置时用 `DSH_CHECKOUT=/path/to/dsh` 覆盖。
 
@@ -119,7 +119,7 @@ dsh 检出不在默认位置时用 `DSH_CHECKOUT=/path/to/dsh` 覆盖。
 host.js             宿主入口：导出 Config，接线首屏注入
 src/plugin.mjs      宿主端实现：注入行的构造
 src/schema.mjs      自带的 Config schema（无外部依赖）
-presets.mjs         唯一数据源：8 个预设的锚点色 + deriveTokens()
+presets.mjs         唯一数据源：11 个预设的锚点色 + deriveTokens()
 src/runtime.mjs     浏览器端源码（自包含函数，构建时内联进 bundle）
 build-client.mjs    生成 lib/client.js
 lib/client.js       构建产物，随仓库提交（浏览器实际加载的东西）
