@@ -75,6 +75,18 @@
 结构上"看起来更清楚"，但**在客户端解码时被拒**，症状就是静默失效。
 `schema-test.mjs` 因此断言的是引用表结构本身，而不是它的语义。
 
+第二个同类陷阱：**fallback 必须是 union 的一个分支**。schemastery 的 union 只接受
+自己 `list` 里的 const，`meta.default` 不参与校验。所以当 `PRESET_IDS` 不含
+`default`、而 `meta.default` 恰好是 `default` 时，客户端水合描述符后校验
+`{preset: "default"}` 会直接抛错。Host 那边照样接受写入并落盘，客户端却丢弃这一段、
+把行回滚到上一个预设——症状就是"点『默认』闪一下就跳回原主题"，而 profile 里其实
+已经存了 `default`，两边从此不一致。根因是 `PRESET_IDS`
+（`presets.mjs`，只含 8 个配色家族）与 `DEFAULT_PRESET_ID` 是两回事，而 fallback
+作为可存储值也必须能被校验接受。现在 `createPresetSchema()` 会自行把 fallback 并进
+分支表，`schema-test.mjs` 则改成使用 Host 真实传入的 id 列表、并真的用 schemastery
+水合一次来钉住这一点——早先这组测试自己手写了一份含 `default` 的 id 列表，
+恰好掩盖了这个缺陷。
+
 ## 测试
 
 ```sh
@@ -86,7 +98,7 @@ node e2e-test.mjs       # 可选：真实浏览器里的端到端验证，22 项
 | 套件 | 覆盖 |
 | --- | --- |
 | `verify-contract.mjs` (15) | 复现 dsh 的客户端发现链路：包名、`dsh.client`、`./client` 导出形状、bundle id 与 package name 一致 |
-| `schema-test.mjs` | Config 校验、未知 id 回退、volatile 描述格式 |
+| `schema-test.mjs` | Config 校验、未知 id 回退、volatile 描述格式，以及用真实 schemastery 重新水合描述符并校验各段取值 |
 | `self-test.mjs` (19) | 浏览器端逻辑：接管时机（loading 期不接管）、92 token 覆盖、切换与持久化、未知 id 回退 |
 | `host-test.mjs` | 宿主端：Config 校验、实时切换和首屏注入 |
 | `bundle-test.mjs` (11) | 执行**真实产物** `lib/client.js`：注册形状、只 require `react`、导出面、内联数据完整 |
@@ -97,6 +109,9 @@ node e2e-test.mjs       # 可选：真实浏览器里的端到端验证，22 项
 `<checkout>/.dsh-build/recovered-service.log` 读）、本机 Google Chrome，以及
 dsh 检出里的 playwright。它在结束时会**恢复进入时的那个预设**，所以不会改掉你的选择。
 dsh 检出不在默认位置时用 `DSH_CHECKOUT=/path/to/dsh` 覆盖。
+
+`schema-test.mjs` 的客户端水合检查要读检出里的 `vendor/schemastery`：找不到就跳过那一条
+（其余断言照跑），查找顺序是 `DSH_CHECKOUT`、`~/git/deepseek-harness`、包目录的兄弟目录。
 
 ## 目录
 

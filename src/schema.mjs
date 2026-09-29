@@ -12,7 +12,15 @@ const FIELD = 'preset'
  * @returns {Function} a Standard Schema with a Schemastery-compatible descriptor.
  */
 export function createPresetSchema(ids, fallback) {
-  const allowed = new Set(ids)
+  // The fallback is a storable value, not merely a resolution target. The client
+  // does not read this descriptor as data: it rehydrates it with the real
+  // schemastery and validates the stored section against the result, and a
+  // union accepts nothing outside its own branch list. A fallback missing from
+  // that list makes every read of `{preset: <fallback>}` throw, so the client
+  // drops a section the Host has already accepted and snaps the row back to the
+  // previous preset — the write survives, the UI does not.
+  const accepted = ids.includes(fallback) ? [...ids] : [fallback, ...ids]
+  const allowed = new Set(accepted)
 
   /** Resolve one merged section into the namespace value. */
   const schema = (value) => {
@@ -26,7 +34,7 @@ export function createPresetSchema(ids, fallback) {
     }) }
   }
 
-  schema.toJSON = () => presetSchemaJson(ids, fallback)
+  schema.toJSON = () => presetSchemaJson(accepted, fallback)
   schema.type = 'object'
   schema.meta = { default: {} }
   schema.dict = {
@@ -34,7 +42,7 @@ export function createPresetSchema(ids, fallback) {
       type: 'union',
       meta: { default: fallback, volatile: true },
       toJSON: () => {
-        const json = presetSchemaJson(ids, fallback)
+        const json = presetSchemaJson(accepted, fallback)
         return { ...json, uid: json.refs[json.uid].dict[FIELD] }
       },
     },

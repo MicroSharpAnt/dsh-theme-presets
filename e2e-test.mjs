@@ -15,7 +15,7 @@
  * neither of which is a dependency of this package. Point it at your checkout
  * with DSH_CHECKOUT (defaults to a sibling `deepseek-harness` directory).
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -50,7 +50,7 @@ function resolvePlaywright(checkout) {
 }
 
 const checkout = resolveCheckout()
-const serviceLog = join(checkout, '.dsh-build', 'recovered-service.log')
+const buildDir = join(checkout, '.dsh-build')
 const settingsFile = join(homedir(), '.dsh', 'profiles', 'web', 'cordis.patch.yml')
 
 /** Nord's Snow Storm base, i.e. what the light palette must resolve to. */
@@ -64,10 +64,26 @@ function check(ok, label, detail = '') {
   else failures.push(`${label}${detail === '' ? '' : ` — ${detail}`}`)
 }
 
-const log = readFileSync(serviceLog, 'utf8')
-const token = /token=([A-Za-z0-9_-]+)/.exec(log)?.[1]
+/**
+ * Newest service log wins: `dsh web` rotates its launch token on every start, so
+ * a stale log authenticates nothing and every request just 401s.
+ * @returns {string|undefined} the launch token of the most recent server start.
+ */
+function resolveToken() {
+  const logs = readdirSync(buildDir)
+    .filter(name => name.endsWith('.log'))
+    .map(name => ({ name, mtime: statSync(join(buildDir, name)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime)
+  for (const { name } of logs) {
+    const found = /token=([A-Za-z0-9_-]+)/.exec(readFileSync(join(buildDir, name), 'utf8'))?.[1]
+    if (found !== undefined) return found
+  }
+  return undefined
+}
+
+const token = resolveToken()
 if (token === undefined) {
-  console.error(`FAIL — no launch token in ${serviceLog}; is dsh web running?`)
+  console.error(`FAIL — no launch token under ${buildDir}; is dsh web running?`)
   process.exit(1)
 }
 
@@ -130,6 +146,14 @@ try {
     await openSettingsOrStay()
     await page.getByText('默认', { exact: true }).first().click()
     await page.waitForTimeout(1500)
+    // Regression: 默认 is the one selection stored as the fallback id rather than
+    // a palette id. When the client cannot decode it, the row snaps back to the
+    // previous preset while the profile patch keeps the newly written value —
+    // the UI and the saved state disagree until the next reload.
+    const cleared = await read()
+    check(cleared.inline === '' && cleared.attr === null,
+      'switching back to 默认 clears the override layer', JSON.stringify(cleared))
+    check(persisted() === 'default', 'switching back to 默认 is persisted', persisted())
   }
 
   if (entryName !== 'Nord') {
