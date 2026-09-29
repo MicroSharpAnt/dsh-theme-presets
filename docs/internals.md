@@ -49,7 +49,18 @@
 1. **同路径的模块会被 ESM 缓存。**
    cordis 重载时按绝对路径 `import()` 插件，而 Node 对重复的 specifier 直接返回
    缓存模块——所以**改了被静态导入的源码，进程里跑的仍然是旧代码**。
-   本插件只有 `presets.mjs` 走 mtime 动态载入；改 `host.js` 或 `src/plugin.mjs` 要重启。
+   `src/plugin.mjs` 与 `host.js` 都是静态导入，改它们要重启。
+
+   `presets.mjs` 是**一半动态、一半静态**，这是最容易踩的一点：
+
+   - 调色板走 `loadPresets()`，按 mtime 载入，只调配色**不需要**重启；
+   - 但 `PRESET_IDS` 是 `host.js` 的静态导入，`Config` 在模块加载时求值一次——
+     **增删预设 id 必须重启 dsh web**。否则 host 的 union 还是旧的，新 id 会被
+     归一化成 fallback，而浏览器端已经从 HMR 拿到了带新按钮的 bundle。
+
+   客户端因此带了一道防御：`readSelectable()` 从 describe 描述符里读出 host 真正
+   接受的 id，只渲染交集。bundle 比 host 新时，新预设只是暂时不出现，而不是
+   "点一下闪回默认、顺带把已存的配色覆盖掉"。`self-test.mjs` 的场景 5 钉住它。
 
 2. **patch 条目按 `id` 做 diff，改 `name` 不生效。**
    只改注释不触发重载；改 `name` 也**不会**换用新路径，实测仍旧加载缓存里的旧模块。
@@ -99,7 +110,7 @@ node e2e-test.mjs       # 可选：真实浏览器里的端到端验证，22 项
 | --- | --- |
 | `verify-contract.mjs` (15) | 复现 dsh 的客户端发现链路：包名、`dsh.client`、`./client` 导出形状、bundle id 与 package name 一致 |
 | `schema-test.mjs` | Config 校验、未知 id 回退、volatile 描述格式，以及用真实 schemastery 重新水合描述符并校验各段取值 |
-| `self-test.mjs` (19) | 浏览器端逻辑：接管时机（loading 期不接管）、92 token 覆盖、切换与持久化、未知 id 回退 |
+| `self-test.mjs` (25) | 浏览器端逻辑：接管时机（loading 期不接管）、92 token 覆盖、切换与持久化、未知 id 回退，以及 host schema 比 bundle 旧时不渲染新预设 |
 | `host-test.mjs` | 宿主端：Config 校验、实时切换和首屏注入 |
 | `bundle-test.mjs` (11) | 执行**真实产物** `lib/client.js`：注册形状、只 require `react`、导出面、内联数据完整 |
 | `e2e-test.mjs` (22) | 真实浏览器（playwright + 本机 Chrome）：设置行出现、12 个选项、切换后浏览器端接管、持久化、重载后首屏层先绘制、两层取值一致、无 console 报错 |

@@ -62,12 +62,22 @@ export function install(require, React, data) {
    * @returns {object} the row element tree.
    */
   function Row(props) {
-    const { t, readPreset, subscribePreset, readScheme, subscribeScheme, select } = props
+    const { t, readPreset, subscribePreset, readScheme, subscribeScheme, select, readSelectable } = props
     const current = React.useSyncExternalStore(subscribePreset, readPreset)
     const scheme = React.useSyncExternalStore(subscribeScheme, readScheme)
 
+    // A bundle can be newer than the running host: the id list reaches the
+    // host's `Config` through a static import, so a preset added to
+    // `presets.mjs` enters the schema only after a restart, while HMR delivers
+    // the new bundle on a plain refresh. Offering such a preset would look
+    // selectable and then quietly collapse to the fallback, overwriting the
+    // palette already stored — so only render what the host vouches for.
+    const selectable = readSelectable === undefined ? undefined : readSelectable()
     const items = [{ id: defaultId, name: t('presets.default'), hint: undefined, preview: undefined }]
-    for (const entry of meta) items.push(entry)
+    for (const entry of meta) {
+      if (selectable !== undefined && !selectable.has(entry.id)) continue
+      items.push(entry)
+    }
 
     return h('div', { className: 'dshtp-group' },
       h('div', { className: 'dshtp-head' },
@@ -123,6 +133,33 @@ export function install(require, React, data) {
       const candidate = value === null || value === undefined ? undefined : value.preset
       if (typeof candidate !== 'string') return defaultId
       return candidate === defaultId || values[candidate] !== undefined ? candidate : defaultId
+    }
+
+    /**
+     * The preset ids the running host's schema accepts, or undefined when that
+     * descriptor cannot be read.
+     *
+     * `host.js` reaches `PRESET_IDS` through a static import, so the schema is
+     * fixed at process start: a preset added to `presets.mjs` becomes storable
+     * only after a restart, while HMR ships this half the new bundle on a plain
+     * refresh. Rendering an id the host does not know would look like an
+     * ordinary choice and then collapse to the fallback, silently overwriting
+     * the preset the user already had. Reading the union's own branches keeps
+     * the picker to what the host will actually store.
+     * @returns {Set<string>|undefined} accepted ids, or undefined if unreadable.
+     */
+    const readSelectable = () => {
+      try {
+        const view = ctx.configForms.describe().getSnapshot().view
+        const section = view.namespaces.find((entry) => entry.ns === namespace)
+        const refs = section.schema.refs
+        const union = refs[refs[section.schema.uid].dict.preset]
+        if (!Array.isArray(union.list)) return undefined
+        const ids = union.list.map((id) => refs[id].value).filter((value) => typeof value === 'string')
+        return ids.length > 0 ? new Set(ids) : undefined
+      } catch (_unreadableSchema) {
+        return undefined
+      }
     }
 
     const overridesFor = (id) => {
@@ -182,6 +219,7 @@ export function install(require, React, data) {
       locale: LOCALE_NS,
       inject: () => ({
         readPreset: () => current,
+        readSelectable,
         subscribePreset: (listener) => {
           presetListeners.add(listener)
           return () => { presetListeners.delete(listener) }

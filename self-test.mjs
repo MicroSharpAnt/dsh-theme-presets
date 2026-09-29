@@ -9,8 +9,9 @@
  *
  * Run: node self-test.mjs
  */
-import { DEFAULT_PRESET_ID, PRESETS, deriveTokens } from './presets.mjs'
+import { DEFAULT_PRESET_ID, PRESET_IDS, PRESETS, deriveTokens } from './presets.mjs'
 import { install } from './src/runtime.mjs'
+import { presetSchemaJson } from './src/schema.mjs'
 
 const failures = []
 const passed = []
@@ -49,7 +50,7 @@ const slotRegistrations = []
 const overrideCalls = []
 
 /** Build a context + scope pair whose status the test can drive. */
-function harness({ status = 'ready', preset = DEFAULT_PRESET_ID, writable = true } = {}) {
+function harness({ status = 'ready', preset = DEFAULT_PRESET_ID, writable = true, servedIds } = {}) {
   const scopeState = {
     status,
     value: preset === undefined ? undefined : { preset },
@@ -81,7 +82,24 @@ function harness({ status = 'ready', preset = DEFAULT_PRESET_ID, writable = true
     effect(callback) { const disposer = callback(); effects.push(disposer); return () => {} },
     locale: { register(namespace, dict) { ctx.localeRegistrations.push([namespace, dict]) }, regs: [] },
     localeRegistrations: [],
-    configForms: { get(entryId) { ctx.boundNamespace = entryId; return scope } },
+    configForms: {
+      get(entryId) { ctx.boundNamespace = entryId; return scope },
+      // The describe mirror the row reads its selectable ids from. `servedIds`
+      // stands in for the host's schema: omit it to model a host whose
+      // descriptor cannot be read, pass a list to model one that predates this
+      // bundle's presets.
+      describe: () => ({
+        getSnapshot: () => ({
+          view: servedIds === undefined ? undefined : {
+            namespaces: [{
+              ns: 'theme-presets',
+              schema: presetSchemaJson(servedIds, DEFAULT_PRESET_ID),
+              value: { preset },
+            }],
+          },
+        }),
+      }),
+    },
     theme: {
       getTheme: () => ({ active: { colorScheme: scheme }, preference: scheme, tokens: {} }),
       overrideTokens(source, tokens) { overrideCalls.push({ source, tokens }); return () => {} },
@@ -132,7 +150,23 @@ const data = {
   })),
 }
 
-const fakeReact = { createElement: () => ({}), useSyncExternalStore: () => DEFAULT_PRESET_ID }
+/** Preset ids the row rendered as buttons, in render order. */
+const renderedButtons = []
+const fakeReact = {
+  createElement(type, props, ...children) {
+    if (props !== null && typeof props === 'object' && 'aria-pressed' in props) renderedButtons.push(props.key)
+    return { type, props, children }
+  },
+  useSyncExternalStore: () => DEFAULT_PRESET_ID,
+}
+
+/** Render the most recently registered row and report which presets it offered. */
+function offeredPresets() {
+  renderedButtons.length = 0
+  const registration = slotRegistrations.at(-1)[1]
+  registration.component({ t: (key) => key, ...registration.options.inject() })
+  return [...renderedButtons]
+}
 
 // --- scenario 1: durable preset already resolved ------------------------------
 {
@@ -222,6 +256,34 @@ const fakeReact = { createElement: () => ({}), useSyncExternalStore: () => DEFAU
   check(Object.keys(call.tokens).length === 0, 'unknown preset id falls back to the default palette')
   check(slotRegistrations.at(-1)[1].options.inject().readPreset() === DEFAULT_PRESET_ID,
     'row reports the default for an unknown id')
+}
+
+// --- scenario 5: a bundle newer than the running host's schema ----------------
+{
+  // `host.js` takes its id list from a static import, so the schema is fixed at
+  // process start while a refresh can hand this half a newer bundle. Offering
+  // an id the host cannot store looks like an ordinary choice and then writes
+  // the fallback over the preset the user already had.
+  const ctx = harness({ status: 'ready', preset: 'nord', servedIds: ['nord', 'dracula'] })
+  install(() => ({}), fakeReact, data).apply(ctx)
+  const offered = offeredPresets()
+  check(!offered.includes('everforest'),
+    'a preset the host schema does not list is not offered', offered.join(', '))
+  check(offered.includes('nord') && offered.includes('dracula'),
+    'presets the host does list stay offered', offered.join(', '))
+  check(offered.includes(DEFAULT_PRESET_ID), 'the default entry is always offered')
+
+  const full = harness({ status: 'ready', preset: 'nord', servedIds: PRESET_IDS })
+  install(() => ({}), fakeReact, data).apply(full)
+  const every = offeredPresets()
+  check(every.length === PRESET_IDS.length + 1,
+    'a host that knows every preset offers them all', `${every.length}/${PRESET_IDS.length + 1}`)
+
+  const unreadable = harness({ status: 'ready', preset: 'nord' })
+  install(() => ({}), fakeReact, data).apply(unreadable)
+  const fallback = offeredPresets()
+  check(fallback.length === PRESET_IDS.length + 1,
+    'an unreadable schema falls back to offering everything', String(fallback.length))
 }
 
 // --- report ------------------------------------------------------------------
